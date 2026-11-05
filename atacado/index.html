@@ -62,9 +62,26 @@ main{padding-block:8px 140px}
 .btn.primary{background:var(--accent);color:var(--accent-ink)}
 .btn.ghost{background:transparent;color:var(--bg);border:1px solid color-mix(in srgb,var(--bg) 40%,transparent)}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
-.toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ok);color:#fff;padding:9px 14px;border-radius:6px;font-weight:600;font-size:14px}
+.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ok);color:#fff;padding:9px 14px;border-radius:6px;font-weight:600;font-size:14px}
 footer{color:var(--muted);font-size:13px;padding-block:24px;max-width:70ch}
 textarea{width:100%;font:13px var(--mono);margin-top:8px}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tab{flex:1;font:700 16px var(--display);text-transform:uppercase;letter-spacing:.04em;padding:10px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.tab[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.accgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;padding-top:12px}
+.acc{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+.acc img{width:100%;aspect-ratio:1;object-fit:contain;background:#fff;display:block}
+.acc .bd{padding:12px;display:flex;flex-direction:column;gap:8px;flex:1}
+.acc h3{font-size:15px;margin:0;line-height:1.3}
+.acc .sub{font-size:12px;color:var(--muted)}
+.acc .price{text-align:left;font-size:18px}
+.acc input,.acc select{width:100%;font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.acc .addrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:auto}
+.acc .addrow .qty output{min-width:22px}
+.acc .add{flex:1 1 100%;justify-content:center}
+.acc ul{list-style:none;margin:0;padding:0;font-size:13px}
+.acc li{display:flex;justify-content:space-between;gap:6px;padding:4px 0;border-top:1px dashed var(--line)}
+.acc li button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:13px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
 
@@ -72,29 +89,33 @@ textarea{width:100%;font:13px var(--mono);margin-top:8px}
   <header class="top">
     <div class="eyebrow">GR iPhones · Atacado para assistências técnicas</div>
     <h1>Peças de iPhone <span>no atacado</span></h1>
-    <p class="lead">Telas, baterias, câmeras, flex, carcaças e componentes do iPhone 6 ao 17 Pro Max. Monte o pedido aqui e envie direto no nosso WhatsApp.</p>
+    <p class="lead">Telas, baterias, câmeras, flex, carcaças e componentes do iPhone 6 ao 17 Pro Max, e acessórios: cabos, carregadores, capinhas e películas. Monte o pedido aqui e envie direto no nosso WhatsApp.</p>
     <div class="facts"><span class="fact" id="f-total"></span><span class="fact">Pedido mínimo R$ 300</span><span class="fact">Bragança Paulista · SP</span><span class="fact">Envio Sedex p/ todo o Brasil</span><span class="fact">Pix ou cartão</span><span class="fact">Garantia de 30 dias</span></div>
   </header>
 </div>
 
 <div class="bar"><div class="wrap">
+  <div class="tabs" role="tablist"><button class="tab" id="t-pecas" aria-pressed="true">Peças</button><button class="tab" id="t-acc" aria-pressed="false">Acessórios</button></div>
+  <div id="pecas-ctl">
   <div class="controls">
     <input type="search" id="q" placeholder="Buscar: 13 pro max, bateria, incell…" aria-label="Buscar peça">
     <select id="model" aria-label="Filtrar por modelo"><option value="">Todos os modelos</option></select>
   </div>
   <div class="chips" id="chips" role="toolbar" aria-label="Categorias"></div>
+  </div>
 </div></div>
 
 <main class="wrap">
   <div class="count" id="count"></div>
   <div id="out"></div>
+  <div id="acc" class="accgrid" hidden></div>
   <footer>
     Preços em reais por unidade, válidos para lojistas e assistências técnicas. Pedido mínimo de R$ 300. Preços e estoque sujeitos a alteração; confirme no WhatsApp ao fechar o pedido. Envio pelos Correios (Sedex) para todo o Brasil, com frete por conta do cliente. Pagamento via Pix ou cartão. Garantia de 30 dias nas peças.
   </footer>
 </main>
 
 <div class="cart" id="cart"><div class="wrap">
-  <div class="sum"><b id="c-total">R$ 0,00</b><div id="c-items">Nenhuma peça no pedido</div></div>
+  <div class="sum"><b id="c-total">R$ 0,00</b><div id="c-items">Nenhum item no pedido</div></div>
   <button class="btn ghost" id="b-clear" disabled>Limpar</button>
   <button class="btn ghost" id="b-copy" disabled>Copiar pedido</button>
   <a class="btn primary" id="b-wa" href="#" target="_blank" rel="noopener" aria-disabled="true">Enviar no WhatsApp</a>
@@ -109,7 +130,9 @@ const brl = v => v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const cats = [...new Set(DATA.map(d=>d[0]))];
 const models = [...new Set(DATA.map(d=>d[1]))];
 const items = DATA.map((d,i)=>({id:i,cat:d[0],model:d[1],type:d[2],price:d[3]}));
+const ACC = [{"id": 1, "cat": "Cabo", "nome": "Cabo turbo Tipo-C para Tipo-C · PD 60W", "sub": "Kaidi KD-27 · branco", "price": 13, "img": "img/01-cabo-kaidi-kd27.jpg", "modelo": false}, {"id": 2, "cat": "Carregador", "nome": "Carregador turbo Cube Pro · Tipo-C 20W GaN", "sub": "Kaidi KD-661 · branco", "price": 19.99, "img": "img/02-carregador-kaidi-kd661.jpg", "modelo": false}, {"id": 3, "cat": "Cabo", "nome": "Cabo turbo Tipo-C para Lightning · PD 30W", "sub": "Kaidi KD-26 · branco", "price": 13, "img": "img/03-cabo-kaidi-kd26.jpg", "modelo": false}, {"id": 4, "cat": "Capinha", "nome": "Case Space Collection · transparente anti-impacto", "sub": "Do iPhone XR ao 18 Pro Max", "price": 8, "img": "img/04-case-space.jpg", "modelo": true}, {"id": 5, "cat": "Capinha", "nome": "Capinha de silicone", "sub": "Do iPhone XR ao 18 Pro Max · cores sortidas por grupo, a cor exata não é garantida", "price": 8, "img": "img/05-capinha-silicone.jpg", "modelo": true, "var": ["Neutras (branco e preto)", "Cores femininas (sortidas)", "Cores masculinas (sortidas)"]}, {"id": 6, "cat": "Capinha", "nome": "Clear Case magnética · transparente", "sub": "Do iPhone XR ao 18 Pro Max", "price": 10, "img": "img/06-clear-case-magnetica.jpg", "modelo": true}, {"id": 7, "cat": "Película", "nome": "Película de vidro 3D · borda preta", "sub": "Do iPhone 7 ao 18 Pro Max", "price": 5, "img": "img/07-pelicula-3d.jpg", "modelo": true}];
 const cart = new Map();
+const acart = new Map();
 let cat = "";
 const $ = s=>document.querySelector(s);
 $("#f-total").textContent = items.length+" itens · "+cats.length+" categorias";
@@ -144,13 +167,16 @@ function orderText(){
   let t="Olá, GR iPhones! Quero fazer este pedido de peças:\n\n",tot=0;
   for(const [id,n] of cart){const it=items[id];const s=it.price*n;tot+=s;
     t+=`${n}x ${it.cat} iPhone ${it.model}${it.type?" ("+it.type+")":""} — ${brl(it.price)} = ${brl(s)}\n`}
+  if(acart.size){t+=(cart.size?"\nAcessórios:\n":"");for(const [k,l] of acart){const a=ACC.find(x=>x.id===l.id);const s=a.price*l.q;tot+=s;
+    t+=`${l.q}x ${a.nome}${l.model?" · iPhone "+l.model:""}${l.v?" · "+l.v:""} — ${brl(a.price)} = ${brl(s)}\n`}}
   return t+`\nTotal: ${brl(tot)}`;
 }
 function updateCart(){
   let n=0,tot=0;for(const [id,q] of cart){n+=q;tot+=items[id].price*q}
+  for(const l of acart.values()){n+=l.q;tot+=ACC.find(x=>x.id===l.id).price*l.q}
   $("#c-total").textContent=brl(tot);
   const falta=Math.max(0,MINIMO-tot);
-  $("#c-items").textContent=!n?"Pedido mínimo: "+brl(MINIMO):(falta?`${n} peça${n>1?"s":""} · faltam ${brl(falta)} pro pedido mínimo`:`${n} peça${n>1?"s":""} · pedido mínimo atingido`);
+  $("#c-items").textContent=!n?"Pedido mínimo: "+brl(MINIMO):(falta?`${n} ite${n>1?"ns":"m"} · faltam ${brl(falta)} pro pedido mínimo`:`${n} ite${n>1?"ns":"m"} · pedido mínimo atingido`);
   const has=n>0&&falta===0;$("#b-clear").disabled=n===0;$("#b-copy").disabled=!has;
   const wa=$("#b-wa");
   if(WHATSAPP&&has){wa.href="https://wa.me/"+WHATSAPP+"?text="+encodeURIComponent(orderText());wa.removeAttribute("aria-disabled");wa.style.opacity=1}
@@ -162,9 +188,35 @@ $("#b-wa").addEventListener("click",e=>{if($("#b-wa").getAttribute("aria-disable
 $("#b-copy").onclick=async()=>{const txt=orderText();
   try{await navigator.clipboard.writeText(txt);toast("Pedido copiado. Cole no WhatsApp da GR.")}
   catch(e){const ta=document.createElement("textarea");ta.value=txt;ta.rows=8;$("#out").prepend(ta);ta.select();toast("Selecione e copie o texto acima.")}};
-$("#b-clear").onclick=()=>{cart.clear();updateCart();render()};
+$("#b-clear").onclick=()=>{cart.clear();acart.clear();updateCart();render();renderAcc()};
 $("#q").addEventListener("input",render);$("#model").addEventListener("change",render);
 render();updateCart();
+function renderAcc(){
+  const g=$("#acc");g.textContent="";
+  ACC.forEach(a=>{
+    const c=document.createElement("article");c.className="acc";
+    c.innerHTML=`<img src="${a.img}" alt="${a.nome}" loading="lazy"><div class="bd"><h3>${a.nome}</h3><div class="sub">${a.sub}</div><div class="price">${brl(a.price)}</div>
+      ${a.modelo?`<input class="m" placeholder="Modelo do iPhone (ex.: 13 Pro Max)" aria-label="Modelo do iPhone">`:""}
+      ${a.var?`<select class="v" aria-label="Cor">${a.var.map(v=>`<option>${v}</option>`).join("")}</select>`:""}
+      <div class="addrow"><div class="qty"><button aria-label="Menos">−</button><output>1</output><button aria-label="Mais">+</button></div><button class="btn primary add">Adicionar</button></div><ul></ul></div>`;
+    let q=1;const o=c.querySelector("output"),[mi,pl]=c.querySelectorAll(".qty button");
+    mi.onclick=()=>{q=Math.max(1,q-1);o.textContent=q};pl.onclick=()=>{q++;o.textContent=q};
+    const ul=c.querySelector("ul");
+    const draw=()=>{ul.textContent="";for(const [k,l] of acart){if(l.id!==a.id)continue;const li=document.createElement("li");
+      li.innerHTML=`<span>${l.q}x ${l.model?"iPhone "+l.model:""}${l.model&&l.v?" · ":""}${l.v||""}${!l.model&&!l.v?"no pedido":""}</span><button aria-label="Remover">remover</button>`;
+      li.querySelector("button").onclick=()=>{acart.delete(k);draw();updateCart()};ul.append(li)}};
+    c.querySelector(".add").onclick=()=>{
+      const mEl=c.querySelector(".m"),vEl=c.querySelector(".v");
+      const model=mEl?mEl.value.trim():"";if(mEl&&!model){mEl.focus();toast("Escreva o modelo do iPhone.");return}
+      const v=vEl?vEl.value:"";const k=a.id+"|"+model.toLowerCase()+"|"+v;
+      const cur=acart.get(k);acart.set(k,{id:a.id,model,v,q:(cur?cur.q:0)+q});
+      q=1;o.textContent=1;if(mEl)mEl.value="";draw();updateCart();toast("Adicionado ao pedido.")};
+    draw();g.append(c)});
+}
+function tab(t){const acc=t==="acc";$("#t-pecas").setAttribute("aria-pressed",String(!acc));$("#t-acc").setAttribute("aria-pressed",String(acc));
+  $("#pecas-ctl").hidden=acc;$("#out").hidden=acc;$("#count").hidden=acc;$("#acc").hidden=!acc;window.scrollTo({top:0})}
+$("#t-pecas").onclick=()=>tab("pecas");$("#t-acc").onclick=()=>tab("acc");
+renderAcc();
 </script>
 
 </body></html>
